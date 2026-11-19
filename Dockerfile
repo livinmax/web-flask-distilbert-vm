@@ -1,22 +1,22 @@
-# Используем официальный образ Python
+# Official Python image
 FROM python:3.9-slim
 
-# Устанавливаем рабочую директорию
+# Application directory
 WORKDIR /app
 
-# Копируем файл весов модели
+# Trained weight file
 COPY trained_distilbert_pytorch.pt /app/
 
-# Копируем папку с локальными ассетами (конфиг, словарь и т.д.)
+# Local tokenizer and config assets
 COPY local_model_assets_multi /app/local_model_assets_multi
 
-# Копируем остальные файлы приложения
+# Application files
 COPY app.py /app/
 COPY requirements.txt /app/
 COPY templates /app/templates/
 
-# Устанавливаем зависимости
+# Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Указываем команду для запуска приложения
+# Start the Flask app
 CMD ["python", "app.py"]

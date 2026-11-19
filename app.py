@@ -1,5 +1,5 @@
 import torch
-import torch.nn.functional as F  # Добавляем импорт F
+import torch.nn.functional as F  # Softmax over class logits
 from transformers import DistilBertForSequenceClassification, DistilBertTokenizer
 from flask import Flask, render_template, request
 

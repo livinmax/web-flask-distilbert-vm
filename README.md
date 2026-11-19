@@ -1,30 +1,54 @@
-Project flow
-<img width="1166" height="296" alt="image" src="https://github.com/user-attachments/assets/feca2de4-6bfa-4af4-8d1c-e8bca65dd836" />
+# Service line classifier
 
-Business case: 
-- Company X uses tool "J" to handle tickets from users.
-- Usually user send a mail with description of a problem to "J"'s mailbox.
-- "J" creates ticket from user's mail automatically
-- Y team is involved to sort and dispatch tickets from initial stage to proper service line for further processing
+Flask app that assigns a support ticket to one of 19 service lines. The form takes a subject and a mail body. A fine-tuned DistilBERT model classifies the concatenated text and returns the line and its probability.
 
-Solution:
-- Main purpose of solution is to automate ticket's assignment to responsible service line
-- DistilBert NN was fine-tuned to classification (19 classes).
-- In: text, out: class of service line prediction
+## Request path
 
-Deploy:
-- For test purpose solution was deployed with Flask framework and
-- Virtual machine was used to run container with application. Image was upload to VM from DockerHub
-- Input for model is orginized via web application
+```mermaid
+flowchart LR
+  user[Subject and mail] --> web[Flask form]
+  web --> model["DistilBERT<br/>19 service lines"]
+  model -->|line and probability| web
+```
 
-Features:
-- Trained model and settings, as well as other functionalities, are packed to image and post to DockerHub
-- DockerHub link: docker pull livinmax/distilbert-app:fin
-- Code for model training in file train_distilbert.ipynb
+The page posts both fields to `POST /predict`. `app.py` joins them with a space, tokenizes with the local DistilBERT tokenizer, runs the model on CPU, and takes the class with the highest softmax probability.
 
-Project structure:
-- Dockerfile
-- app.py
-- requirement.txt
-- templates
-   - index.html
+Service lines, in label order: ABAP, BC, CFIN, CMA, CON, EWM, FIN, MAC, MDM, MET, MNF, O2C, P2P, PMN, RE, REP, RSP, SL, TM.
+
+## Training
+
+`train_distillbert.ipynb` fine-tunes `distilbert-base-multilingual-cased`.
+
+- Text is `text_col1` plus `text_col2`. The label column is `service_line`.
+- Split is random 80/20, `random_state=42`. There is no separate test set in the notebook.
+- Sequence length 128, batch size 16, AdamW at `2e-5`, dropout 0.06, up to 15 epochs.
+- Early stopping watches validation loss with patience 5. The reported metric is weighted F1.
+- The notebook runs in Colab and reads `/content/df_colab.xlsx`. The spreadsheet is not in this repo.
+
+The running app does not train. It loads `trained_distilbert_pytorch.pt` and `local_model_assets_multi/` (config and tokenizer). Those files are not in git. The Dockerfile copies them in at build time.
+
+## Deploy
+
+```mermaid
+flowchart LR
+  nb[Colab notebook] --> weights[Weights and tokenizer]
+  weights --> image[Docker image]
+  image --> hub[Docker Hub]
+  hub --> vm[VM runs Flask on port 5000]
+```
+
+Published image:
+
+```bash
+docker pull livinmax/distilbert-app:fin
+```
+
+## Layout
+
+```
+app.py
+Dockerfile
+requirements.txt
+templates/index.html
+train_distillbert.ipynb
+```
